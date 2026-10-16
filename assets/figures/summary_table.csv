@@ -1,0 +1,5 @@
+﻿group,rows,share_pct,mean_tokens,median_tokens,p95_tokens
+all,3593,100.0,44.41,20.0,165.0
+negative,844,23.49,28.55,19.0,86.84999999999991
+neutral,338,9.41,33.53,18.5,107.14999999999998
+positive,2411,67.1,51.49,21.0,193.0

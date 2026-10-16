@@ -1,0 +1,71 @@
+# ---------------------------------------------------------------------------
+# Persian Sentiment Analysis (BAFP) — Python dependencies
+#
+# Target platform: Windows 10/11, CPython 3.12 (Microsoft Store build), CPU-only.
+# Versions below are the ones actually resolved and imported on this machine.
+#
+# Install (from the project root):
+#     python -m pip install --user -c constraints.txt -r requirements.txt
+#
+# The -c constraints.txt flag protects the already-installed pandas / numpy /
+# streamlit / plotly versions from being upgraded by transitive dependencies.
+# ---------------------------------------------------------------------------
+
+# --- Core data handling (versions enforced via constraints.txt) -------------
+pandas==3.0.3
+numpy==2.5.1
+
+# --- HTTP / scraping --------------------------------------------------------
+requests>=2.32
+beautifulsoup4==4.15.0
+lxml>=5.2                 # parser backend for BeautifulSoup
+selenium==4.49.0          # Edge fallback scraper path (Chrome is NOT installed)
+jdatetime>=4.1            # parse Jalali (Solar Hijri) display dates from Digikala
+
+# --- Persian text preprocessing --------------------------------------------
+hazm==0.12.1              # python-crfsuite ships a cp312 win_amd64 wheel
+
+# --- Arabic/Persian glyph shaping ------------------------------------------
+# matplotlib and Pillow do not perform bidi reordering on their own, so Persian
+# labels and word-cloud words must be reshaped before drawing.
+arabic-reshaper==3.0.0
+python-bidi>=0.6
+
+# --- Machine learning / deep learning --------------------------------------
+# CPU-only on purpose: download.pytorch.org is unreachable from this network and
+# PyPI's Windows torch wheels are CPU builds. torch 2.9.1 is the newest release
+# that still publishes a cp312 win_amd64 wheel (2.10.0+ ship none).
+torch==2.9.1
+transformers==4.57.6
+huggingface_hub==0.36.2   # direct-URL model bootstrap (see src/train.py)
+safetensors==0.8.0        # checkpoint serialisation for the fine-tuned model
+scikit-learn==1.9.1
+
+# --- Visualisation ----------------------------------------------------------
+wordcloud==1.9.6
+matplotlib==3.11.0
+seaborn>=0.13
+plotly==6.8.0
+streamlit==1.59.0
+
+# --- Misc -------------------------------------------------------------------
+openpyxl>=3.1             # Excel export of results
+tqdm>=4.66                # progress bars for scraping / training
+
+# ---------------------------------------------------------------------------
+# Deliberately NOT included
+# ---------------------------------------------------------------------------
+# `datasets` and `accelerate`: src/train.py runs a plain PyTorch loop over a
+# pandas DataFrame, so neither is needed. Each one pulls in a large transitive
+# tree, and the dependency risk is not worth it on a CPU-only machine.
+#
+# `jupyter` / `nbconvert`: the install of jupyterlab failed on this machine with
+#     OSError: [Errno 2] No such file or directory: ...\jupyterlab\galata\...js
+# i.e. Windows long-path support is disabled (see install.log). The EDA notebook
+# is therefore optional. If you want it, enable long paths first
+# (reg HKLM\SYSTEM\CurrentControlSet\FileSystem  LongPathsEnabled=1), reboot,
+# then `pip install --user jupyter nbconvert`, and run the notebook as a script.
+# jupyter>=1.0
+# nbformat>=5.10
+# nbconvert>=7.16
+# ipykernel>=6.29

@@ -1,0 +1,55 @@
+{
+  "csv": "data\\cleaned_comments.csv",
+  "rows": 3593,
+  "products": 16,
+  "font": "C:\\Users\\Ashkan\\BAFP\\assets\\fonts\\Vazirmatn-Regular.ttf",
+  "matplotlib_font": "Vazirmatn",
+  "pillow_raqm_available": false,
+  "metrics": "C:\\Users\\Ashkan\\BAFP\\models\\parsbert-sentiment-3class\\metrics.json",
+  "figures": [
+    "confusion_matrix.png",
+    "label_distribution.png",
+    "length_distribution.png",
+    "per_class_metrics.png",
+    "summary_table.csv",
+    "top_words.png",
+    "word_frequencies.csv",
+    "wordcloud_negative.png",
+    "wordcloud_neutral.png",
+    "wordcloud_positive.png"
+  ],
+  "labels": [
+    {
+      "group": "all",
+      "rows": 3593,
+      "share_pct": 100.0,
+      "mean_tokens": 44.41,
+      "median_tokens": 20.0,
+      "p95_tokens": 165.0
+    },
+    {
+      "group": "negative",
+      "rows": 844,
+      "share_pct": 23.49,
+      "mean_tokens": 28.55,
+      "median_tokens": 19.0,
+      "p95_tokens": 86.84999999999991
+    },
+    {
+      "group": "neutral",
+      "rows": 338,
+      "share_pct": 9.41,
+      "mean_tokens": 33.53,
+      "median_tokens": 18.5,
+      "p95_tokens": 107.14999999999998
+    },
+    {
+      "group": "positive",
+      "rows": 2411,
+      "share_pct": 67.1,
+      "mean_tokens": 51.49,
+      "median_tokens": 21.0,
+      "p95_tokens": 193.0
+    }
+  ]
+}

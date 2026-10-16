@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/*.nbconvert.ipynb
+
+# Data — regenerate with src/scraper.py + src/preprocess.py
+data/*.csv
+data/**/*.csv
+
+# Model weights — regenerate with src/model_training.py
+models/**
+
+# Downloaded fonts
+assets/fonts/*.ttf
+assets/figures/_shape_test.png
+
+
+# HuggingFace cache (can be several hundred MB)
+.cache/
+*.log
+
+# IDE & Scratch
+.zcode/
+scratch/
+

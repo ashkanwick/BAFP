@@ -1,0 +1,18 @@
+# ---------------------------------------------------------------------------
+# constraints.txt
+#
+# These four packages are ALREADY installed and working in the user's global
+# environment.  They are pinned here so that installing the NLP/ML stack cannot
+# silently upgrade (and therefore break) the existing Streamlit dashboard
+# toolchain.  Always install with:
+#
+#     python -m pip install --user -c constraints.txt -r requirements.txt
+#
+# pandas 3.x in particular is a major release; several older NLP libraries
+# still declare `pandas<3`, so the constraint keeps pip honest.
+# ---------------------------------------------------------------------------
+
+pandas==3.0.3
+numpy==2.5.1
+streamlit==1.59.0
+plotly==6.8.0
