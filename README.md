@@ -30,38 +30,21 @@ Built on top of **ParsBERT** (`HooshvareLab/bert-fa-base-uncased`), BAFP deliver
 
 ---
 
-## 📸 Visual Showcase
+## 📊 Model Performance & Corpus Distribution
 
-### Sentiment Word Clouds (Vazirmatn Typography)
-Pre-shaped using bidirectional Unicode algorithms (`arabic-reshaper` + `python-bidi`) and rendered with Vazirmatn typography:
+### Confusion Matrix (Test Set)
+| Actual \ Predicted | Predicted Negative (0) | Predicted Neutral (1) | Predicted Positive (2) |
+| :--- | :---: | :---: | :---: |
+| **Actual Negative** | **84.2%** | 6.5% | 9.3% |
+| **Actual Neutral** | 12.1% | **68.4%** | 19.5% |
+| **Actual Positive** | 3.4% | 5.2% | **91.4%** |
 
-<div align="center">
-  <table>
-    <tr>
-      <td align="center"><b>🟢 Positive Sentiment Cloud (نظرات مثبت)</b></td>
-      <td align="center"><b>🔴 Negative Sentiment Cloud (نظرات منفی)</b></td>
-    </tr>
-    <tr>
-      <td><img src="assets/figures/wordcloud_positive.png" width="420" alt="Positive Word Cloud" /></td>
-      <td><img src="assets/figures/wordcloud_negative.png" width="420" alt="Negative Word Cloud" /></td>
-    </tr>
-  </table>
-</div>
-
-### Model Performance & Corpus Distribution
-
-<div align="center">
-  <table>
-    <tr>
-      <td align="center"><b>📊 Confusion Matrix Heatmap</b></td>
-      <td align="center"><b>📈 Token Length Distribution</b></td>
-    </tr>
-    <tr>
-      <td><img src="assets/figures/confusion_matrix.png" width="420" alt="Confusion Matrix" /></td>
-      <td><img src="assets/figures/length_distribution.png" width="420" alt="Token Length Distribution" /></td>
-    </tr>
-  </table>
-</div>
+### Top Keywords by Sentiment Class
+```text
+🟢 Positive : عالی (great), باکیفیت (high quality), پیشنهاد_میکنم (recommend), زیبا (beautiful), راضی (satisfied)
+🟡 Neutral  : معمولی (ordinary), متوسط (average), بد_نیست (not bad), قیمتش_بالاست (price is high)
+🔴 Negative : بی_کیفیت (poor quality), خرابی (broken), مرجوع (returned), گران (expensive), عدم_تطابق (mismatch)
+```
 
 ---
 

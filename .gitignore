@@ -18,9 +18,10 @@ data/**/*.csv
 # Model weights — regenerate with src/model_training.py
 models/**
 
-# Downloaded fonts
+# Downloaded fonts & generated figures
 assets/fonts/*.ttf
-assets/figures/_shape_test.png
+assets/figures/*.png
+
 
 
 # HuggingFace cache (can be several hundred MB)
