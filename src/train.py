@@ -344,7 +344,7 @@ def set_seed(seed: int) -> None:
     torch.manual_seed(seed)
 
 
-@torch.no_grad()
+@torch.inference_mode()
 def evaluate(model: Any, loader: DataLoader, device: torch.device, num_labels: int = 3) -> dict[str, Any]:
     """Return accuracy, macro-F1, per-class report and the confusion matrix."""
     from sklearn.metrics import (
@@ -355,30 +355,31 @@ def evaluate(model: Any, loader: DataLoader, device: torch.device, num_labels: i
     )
 
     model.eval()
-    y_true: list[int] = []
-    y_pred: list[int] = []
+    all_true: list[int] = []
+    all_pred: list[int] = []
     for batch in loader:
         input_ids = batch["input_ids"].to(device)
         attention_mask = batch["attention_mask"].to(device)
-        labels = batch["label"].to(device)
+        labels = batch["label"]
         logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
-        y_pred.extend(logits.argmax(dim=1).tolist())
-        y_true.extend(labels.tolist())
+        all_pred.extend(logits.argmax(dim=1).cpu().tolist())
+        all_true.extend(labels.tolist())
 
-    matrix = confusion_matrix(y_true, y_pred, labels=list(range(num_labels)))
+    label_range = list(range(num_labels))
+    matrix = confusion_matrix(all_true, all_pred, labels=label_range)
     report = classification_report(
-        y_true, y_pred, labels=list(range(num_labels)),
-        target_names=[LABEL_NAMES[i] for i in range(num_labels)],
+        all_true, all_pred, labels=label_range,
+        target_names=[LABEL_NAMES[i] for i in label_range],
         output_dict=True, zero_division=0,
     )
     return {
-        "n": len(y_true),
-        "accuracy": float(accuracy_score(y_true, y_pred)),
-        "macro_f1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
-        "weighted_f1": float(f1_score(y_true, y_pred, average="weighted", zero_division=0)),
-        "per_class": {LABEL_NAMES[i]: report[LABEL_NAMES[i]] for i in range(num_labels)},
+        "n": len(all_true),
+        "accuracy": float(accuracy_score(all_true, all_pred)),
+        "macro_f1": float(f1_score(all_true, all_pred, average="macro", zero_division=0)),
+        "weighted_f1": float(f1_score(all_true, all_pred, average="weighted", zero_division=0)),
+        "per_class": {LABEL_NAMES[i]: report[LABEL_NAMES[i]] for i in label_range},
         "confusion_matrix": matrix.tolist(),
-        "labels": [LABEL_NAMES[i] for i in range(num_labels)],
+        "labels": [LABEL_NAMES[i] for i in label_range],
     }
 
 

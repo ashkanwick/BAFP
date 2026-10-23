@@ -235,7 +235,7 @@ def load_news(path: Path) -> pd.DataFrame | None:
     return pd.read_csv(path, encoding="utf-8-sig") if path.exists() else None
 
 
-@st.cache_resource(show_spinner="Loading ParsBERT (first run downloads 654 MB)...")
+@st.cache_resource(show_spinner="در حال فراخوانی و بارگذاری مدل ParsBERT از حافظه محلی...")
 def get_predictor(model_dir: str) -> tuple[Any, str]:
     """Load one fine-tuned predictor once per session, keyed by directory.
 
@@ -256,6 +256,7 @@ def get_predictor(model_dir: str) -> tuple[Any, str]:
         return None, f"Model load failed: {type(exc).__name__}: {exc}"
 
 
+@st.cache_data(show_spinner=False, ttl=60)
 def available_models() -> list[Path]:
     """Every saved checkpoint under models/ that actually has weights."""
     return sorted(
@@ -264,6 +265,7 @@ def available_models() -> list[Path]:
     )
 
 
+@st.cache_data(show_spinner=False, ttl=300)
 def load_metrics(model_dir: Path) -> dict[str, Any] | None:
     path = Path(model_dir) / "metrics.json"
     if not path.exists():
@@ -305,8 +307,7 @@ def sentiment_badge(label: str) -> str:
     """Return a styled HTML badge corresponding to the sentiment tone."""
     color = LABEL_COLORS.get(label, "#64748B")
     fa_name = LABEL_FA.get(label, label)
-    emoji_map = {"positive": "😊", "neutral": "😐", "negative": "😤"}
-    emoji = emoji_map.get(label, "•")
+    emoji = _EMOJI_MAP.get(label, "•")
     return f'<span class="badge" style="background: {color}18; color: {color}; border: 1px solid {color}44;">{emoji} {fa(fa_name)}</span>'
 
 
@@ -507,6 +508,8 @@ def training_history_chart(history: list[dict[str, Any]]) -> go.Figure:
 # ==========================================================================
 # Section 8: Page — Live Prediction (Hero Experience)
 # ==========================================================================
+_EMOJI_MAP: dict[str, str] = {"positive": "😊", "neutral": "😐", "negative": "😤"}
+
 EXAMPLES: tuple[tuple[str, str], ...] = (
     ("positive", "کیفیتش عالی بود و کاملاً راضی‌ام، ارسالش هم سریع بود"),
     ("negative", "به‌شدت بد بود و اصلاً ارزش خرید ندارد"),
@@ -516,8 +519,7 @@ EXAMPLES: tuple[tuple[str, str], ...] = (
 
 def _verdict_card(label: str, label_fa: str, confidence: float) -> None:
     """Hero verdict card with sentiment emoji, label, confidence, and animated bar."""
-    emoji_map = {"positive": "😊", "neutral": "😐", "negative": "😤"}
-    emoji = emoji_map.get(label, "🔍")
+    emoji = _EMOJI_MAP.get(label, "🔍")
     colour = LABEL_COLORS.get(label, "#5B6B7F")
     conf_pct = confidence * 100
     st.markdown(
@@ -589,11 +591,10 @@ def page_prediction(model_dir: Path) -> None:
 
     st.markdown('<div style="margin-top: 0.8rem; margin-bottom: 0.3rem; font-weight: 600; color: #475569; direction: rtl; text-align: right;">نمونه‌های آماده برای بررسی سریع:</div>', unsafe_allow_html=True)
     pills = st.columns(len(EXAMPLES))
-    tone_emoji = {"positive": "😊", "neutral": "😐", "negative": "😤"}
     for column, (tone, example) in zip(pills, EXAMPLES):
         with column:
             st.button(
-                f"{tone_emoji.get(tone, '')} نمونهٔ {LABEL_FA[tone]}",
+                f"{_EMOJI_MAP.get(tone, '')} نمونهٔ {LABEL_FA[tone]}",
                 key=f"example_{tone}",
                 help=example,
                 on_click=_use_example,
@@ -713,18 +714,19 @@ def page_prediction(model_dir: Path) -> None:
                 if st.button("پاک کردن تاریخچه", key="clear_history_btn", use_container_width=True):
                     st.session_state["history"] = []
                     st.rerun()
+            history_html_parts = []
             for item in history:
                 color = LABEL_COLORS.get(item["label"], "#64748B")
-                st.markdown(
+                history_html_parts.append(
                     f'<div class="glass-card" style="margin-bottom: 8px; padding: 0.7rem 1rem; border-right: 4px solid {color}; direction: rtl; text-align: right;">'
                     f'<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">'
                     f'<span style="font-weight: 700; color: {color}; font-size: 0.95rem;">'
                     f'<span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: {color}; margin-left: 6px;"></span>'
                     f'{fa(item["label_fa"])} ({item["confidence"]*100:.1f}%)</span>'
                     f'<span style="font-size: 0.8rem; color: #94A3B8; font-family: monospace;">{ltr(item["timestamp"])} · {item["elapsed_ms"]}ms</span></div>'
-                    f'<div style="font-size: 0.9rem; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{fa(item["text"])}</div></div>',
-                    unsafe_allow_html=True,
+                    f'<div style="font-size: 0.9rem; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{fa(item["text"])}</div></div>'
                 )
+            st.markdown("".join(history_html_parts), unsafe_allow_html=True)
 
 
 # ==========================================================================
@@ -1073,10 +1075,10 @@ def page_batch(model_dir: Path) -> None:
             display_cols = ["ردیف", "متن نظر", "احساس", "درجه اطمینان"]
             st.dataframe(batch_res[display_cols], width="stretch", height=260)
 
-        csv_buffer = io.StringIO()
+        csv_io = io.BytesIO()
         export_df = batch_res[["ردیف", "متن نظر", "احساس", "کلاس لاتین", "درجه اطمینان"]]
-        export_df.to_csv(csv_buffer, index=False, encoding="utf-8-sig")
-        csv_bytes = csv_buffer.getvalue().encode("utf-8-sig")
+        export_df.to_csv(csv_io, index=False, encoding="utf-8-sig")
+        csv_bytes = csv_io.getvalue()
 
         st.download_button(
             label="📥 دانلود نتایج دسته‌ای به عنوان فایل CSV (سازگار با اکسل فارسی)",
@@ -1206,8 +1208,8 @@ def page_advisor(model_dir: Path) -> None:
 
         if rec.reasons_fa:
             with st.expander("📌 دلایل شاخص تصمیم‌گیری مدل (Decision Factors)", expanded=True):
-                for r in rec.reasons_fa:
-                    st.markdown(f'<div class="fa-block" style="margin-bottom: 4px;">• {fa(r)}</div>', unsafe_allow_html=True)
+                reasons_html = "".join(f'<div class="fa-block" style="margin-bottom: 4px;">• {fa(r)}</div>' for r in rec.reasons_fa)
+                st.markdown(reasons_html, unsafe_allow_html=True)
 
         with st.expander(f"📋 مشاهده تمام {report.analyzed_count} نظر تحلیل‌شده با برچسب احساسات", expanded=False):
             table_rows = [
@@ -1292,13 +1294,13 @@ python -m streamlit run app.py
             ("محدودیت سخت‌افزاری پردازنده (CPU-only)", "این محیط فاقد GPU انویدیا است. مدل ۱۶۳ میلیون پارامتری ParsBERT با حداکثر بهینه‌سازی بارگذاری و کش استنتاج می‌شود."),
         ]
 
-        for title, desc in limits:
-            st.markdown(
-                f'<div class="glass-card" style="margin-bottom: 8px; padding: 0.75rem 1rem; border-right: 4px solid #CBD5E1; direction: rtl; text-align: right;">'
-                f'<div style="font-weight: 700; color: #1E293B; font-size: 0.95rem; margin-bottom: 3px;">• {fa(title)}</div>'
-                f'<div style="font-size: 0.88rem; color: #475569; line-height: 1.7;">{fa(desc)}</div></div>',
-                unsafe_allow_html=True,
-            )
+        limits_html = "".join(
+            f'<div class="glass-card" style="margin-bottom: 8px; padding: 0.75rem 1rem; border-right: 4px solid #CBD5E1; direction: rtl; text-align: right;">'
+            f'<div style="font-weight: 700; color: #1E293B; font-size: 0.95rem; margin-bottom: 3px;">• {fa(title)}</div>'
+            f'<div style="font-size: 0.88rem; color: #475569; line-height: 1.7;">{fa(desc)}</div></div>'
+            for title, desc in limits
+        )
+        st.markdown(limits_html, unsafe_allow_html=True)
 
 
 # ==========================================================================

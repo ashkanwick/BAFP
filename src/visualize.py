@@ -51,6 +51,7 @@ import json
 import logging
 import sys
 from collections import Counter
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
@@ -132,6 +133,7 @@ def ensure_font(force: bool = False) -> tuple[str | None, str]:
     return None, "No Persian-capable font found; Persian labels will not render."
 
 
+@lru_cache(maxsize=1)
 def shaping_needed() -> bool:
     """True when Pillow lacks raqm, so Arabic/Persian text must be pre-shaped.
 

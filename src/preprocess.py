@@ -240,15 +240,17 @@ def clean_text(
     do_stem = stem or for_eda
 
     kept: list[str] = []
+    stopwords = tools.stopwords if drop_stop else frozenset()
+    stemmer = tools.stemmer if do_stem else None
     for token in tokens:
         if not token or token.isspace():
             continue
         if NON_PERSIAN_TOKEN.match(token) and not token.isdigit():
             continue  # punctuation and stray Latin
-        if drop_stop and token in tools.stopwords:
+        if token in stopwords:
             continue
-        if do_stem:
-            token = tools.stemmer.stem(token)
+        if stemmer is not None:
+            token = stemmer.stem(token)
         if len(token) < KEEP_AT_LEAST and not token.isdigit():
             continue
         kept.append(token)
@@ -376,9 +378,10 @@ def clean_dataframe(
     except ImportError:
         frame["clean_text"] = frame["raw_text"].map(clean_text)
         frame["eda_text"] = frame["raw_text"].map(lambda t: clean_text(t, for_eda=True))
-    frame["n_tokens"] = frame["clean_text"].str.split().map(lambda w: len(w) if w != [""] else 0)
+    _split_clean = frame["clean_text"].str.split()
+    frame["n_tokens"] = _split_clean.str.len().fillna(0).astype(int)
     frame["char_len"] = frame["clean_text"].str.len()
-    frame["word_len"] = frame["raw_text"].str.split().map(lambda w: len(w) if w else 0)
+    frame["word_len"] = frame["raw_text"].str.split().str.len().fillna(0).astype(int)
 
     before = len(frame)
     frame = frame[frame["n_tokens"] >= min_tokens]

@@ -148,13 +148,14 @@ def fetch_product_comments(
     collected: list[dict[str, Any]] = []
     page = 1
     max_pages = (max_comments + 19) // 20
+    session = requests.Session()
+    session.headers.update(DEFAULT_HEADERS)
 
     while page <= max_pages and len(collected) < max_comments:
         try:
-            resp = requests.get(
+            resp = session.get(
                 url,
                 params={"page": page, "sort": sort},
-                headers=DEFAULT_HEADERS,
                 timeout=timeout,
             )
             if resp.status_code != 200:
