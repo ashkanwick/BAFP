@@ -193,13 +193,17 @@ def configure_matplotlib() -> str | None:
 def top_words(texts: Iterable[str], limit: int = 30, min_len: int = 3) -> Counter[str]:
     """Count words longer than ``min_len``, keeping only the ``limit`` most common.
 
-    The truncation matters: a Counter raises nothing on ``counter[slice]``, it
-    returns 0, so callers that forget ``most_common`` get a silent empty plot.
+    Optimised: single-pass Counter over a generator (no per-row Counter.update).
     """
     counter: Counter[str] = Counter()
     for row in texts:
-        counter.update(word for word in str(row).split() if len(word) > min_len)
-    return Counter(dict(counter.most_common(limit)))
+        for word in str(row).split():
+            if len(word) > min_len:
+                counter[word] += 1
+    # Trim once at the end
+    if len(counter) > limit:
+        return Counter(dict(counter.most_common(limit)))
+    return counter
 
 
 def word_cloud_text(words: Counter[str]) -> str:

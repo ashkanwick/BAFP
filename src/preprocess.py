@@ -68,6 +68,7 @@ import argparse
 import logging
 import re
 import sys
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -203,22 +204,35 @@ def clean_text(
 ) -> str:
     """Normalise, strip noise and re-space a Persian comment.
 
-    Args:
-        text: raw comment; non-strings become ``""`` so a dirty CSV cannot crash
-            the pipeline.
-        remove_latin: drop Latin runs of 2+ letters (brand names, URLs' residue).
-        keep_hashtag_words: strip the ``#`` but keep the word ("#ایران" -> "ایران").
-        for_eda: also drop stop words and stem -- pass True only for the
-            ``eda_text`` column, never for model input.
-        remove_stopwords: explicit override of ``for_eda``'s stop-word step.
-        stem: explicit override of ``for_eda``'s stemming step.
-
-    Returns:
-        Cleaned, single-spaced text. Empty string when nothing Persian survives.
+    Results are LRU-cached (4096 entries) — batch prediction and the advisor
+    often revisit identical short comments, so the second pass is free.
     """
     if not isinstance(text, str) or not text.strip():
         return ""
+    return _clean_text_cached(text, remove_latin, keep_hashtag_words, for_eda, remove_stopwords, stem)
 
+
+@lru_cache(maxsize=4096)
+def _clean_text_cached(
+    text: str,
+    remove_latin: bool,
+    keep_hashtag_words: bool,
+    for_eda: bool,
+    remove_stopwords: bool,
+    stem: bool,
+) -> str:
+    return _clean_text_impl(text, remove_latin, keep_hashtag_words, for_eda, remove_stopwords, stem)
+
+
+def _clean_text_impl(
+    text: str,
+    remove_latin: bool,
+    keep_hashtag_words: bool,
+    for_eda: bool,
+    remove_stopwords: bool,
+    stem: bool,
+) -> str:
+    """Inner implementation — always receives a non-empty str."""
     tools = _TOOLS
     cleaned = tools.normalizer.normalize(text)
     cleaned = cleaned.translate(_DIGIT_TRANSLATION)
