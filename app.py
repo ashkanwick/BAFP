@@ -154,6 +154,50 @@ def _inject_theme() -> None:
     else:
         streamlit_overrides = """
         a { color: #4F46E5; }
+        /* Light-mode primary recolor: Streamlit's stock primary is red while the
+           design system is indigo. Pin the native widgets to indigo so nothing
+           renders red. */
+        /* Radio nav: selected dot */
+        [data-testid="stRadioOption"][data-selected="true"] > div > div > div { background-color: #6366F1 !important; }
+        /* Tabs: selected label + underline indicator */
+        [data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"],
+        [data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"] p { color: #4F46E5 !important; }
+        [data-testid="stTabs"] .react-aria-SelectionIndicator { background-color: #6366F1 !important; border-radius: 999px; }
+        /* Slider: indigo rail, thumb and value */
+        [data-testid="stSlider"] div[role="group"] > div > div:not([style*="absolute"]) {
+            background-image: linear-gradient(to right, #6366F1 0%, #6366F1 100%) !important;
+            border-radius: 999px;
+        }
+        [data-testid="stSlider"] div[role="group"] > div > div[style*="absolute"] { background-color: #6366F1 !important; }
+        [data-testid="stSliderThumbValue"], [data-testid="stSliderThumbValue"] div,
+        [data-testid="stSliderThumbValue"] p { color: #4F46E5 !important; border-color: transparent !important; }
+        /* Buttons: every variant pinned to the light palette (baseweb auto-themes
+           secondary buttons dark on dark-OS systems, dodging the kind selectors) */
+        button[data-testid="stBaseButton-secondary"] {
+            background: var(--surface) !important;
+            color: var(--text) !important;
+            border: 1px solid var(--border-strong) !important;
+            border-radius: var(--radius-sm) !important;
+            font-weight: 500 !important;
+        }
+        button[data-testid="stBaseButton-secondary"]:hover {
+            background: var(--surface-2) !important;
+            border-color: #6366F1 !important;
+            color: var(--text) !important;
+        }
+        button[data-testid="stBaseButton-secondary"] p { color: var(--text) !important; }
+        button[data-testid="stBaseButton-primary"] {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%) !important;
+            color: #fff !important;
+            border: none !important;
+        }
+        button[data-testid="stBaseButton-primary"] p { color: #fff !important; }
+        /* Buttons: settle on press so the hover lift doesn't read as a jump */
+        div.stButton > button[kind="primary"]:active,
+        button[data-testid="stBaseButton-primary"]:active {
+            transform: translateY(0) !important;
+            box-shadow: 0 2px 8px rgba(99,102,241,0.32) !important;
+        }
         """
 
     st.markdown(
@@ -216,6 +260,32 @@ def _inject_theme() -> None:
             position: fixed; top: 16px; right: 19px; left: auto; z-index: 9999995;
         }}
         [data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarCollapseButton"] {{ display: none; }}
+        /* Streamlit's sidebar RESIZE HANDLE: an 8px col-resize strip glued to
+           the sidebar's edge. It hijacks the pointer and re-opens the closed
+           sidebar as a hover preview — remove it entirely; expand/collapse uses
+           the arrow controls instead. */
+        [data-testid="stSidebar"] [class*="eelgd2m3"] {{ display: none !important; }}
+        [data-testid="stSidebar"] div[style*="col-resize"] {{ display: none !important; }}
+        /* Stock expand/collapse controls are theme-naive (a glaring white blob
+           in dark mode) — restyle them with the app's own tokens. */
+        [data-testid="stExpandSidebarButton"], [data-testid="stSidebarCollapseButton"] button {{
+            background: var(--surface) !important;
+            border: 1px solid var(--border-strong) !important;
+            border-radius: 10px !important;
+            box-shadow: var(--shadow-sm) !important;
+        }}
+        [data-testid="stExpandSidebarButton"] svg, [data-testid="stSidebarCollapseButton"] svg {{
+            color: var(--text-muted) !important; fill: var(--text-muted) !important;
+        }}
+        [data-testid="stExpandSidebarButton"]:hover, [data-testid="stSidebarCollapseButton"] button:hover {{
+            border-color: var(--primary) !important;
+            box-shadow: var(--shadow-md) !important;
+        }}
+        [data-testid="stExpandSidebarButton"]:hover svg, [data-testid="stSidebarCollapseButton"] button:hover svg {{
+            color: var(--primary) !important; fill: var(--primary) !important;
+        }}
+        /* Header band should never flash a foreign color in dark mode */
+        [data-testid="stHeader"] {{ background: transparent !important; }}
         /* Latin-only surfaces stay LTR */
         pre, code, [data-testid="stCodeBlock"], [data-testid="stTextInput"] input {{
             direction: ltr; text-align: left;
@@ -260,10 +330,12 @@ def _inject_theme() -> None:
 
         /* Animations */
         @keyframes gradientFlow {{ 0% {{ background-position: 0% 50%; }} 50% {{ background-position: 100% 50%; }} 100% {{ background-position: 0% 50%; }} }}
-        @keyframes fadeInUp {{ from {{ opacity:0; transform: translateY(12px); }} to {{ opacity:1; transform: translateY(0); }} }}
+        @keyframes fadeIn {{ from {{ opacity:0; }} to {{ opacity:1; }} }}
         @keyframes shimmer {{ 0% {{ transform: translateX(-100%); }} 100% {{ transform: translateX(100%); }} }}
         @keyframes pulseDot {{ 0%,100% {{ opacity:1; transform:scale(1); }} 50% {{ opacity:0.6; transform:scale(0.85); }} }}
-        .fade-in {{ animation: fadeInUp 0.45s cubic-bezier(0.16,1,0.3,1) forwards; }}
+        /* Opacity-only entrance: a translate animation replays on every
+           Streamlit rerun and makes the page look like it jumps on click. */
+        .fade-in {{ animation: fadeIn 0.35s ease forwards; }}
         .stagger-1 {{ animation-delay: 0.06s; opacity:0; }}
         .stagger-2 {{ animation-delay: 0.12s; opacity:0; }}
         .stagger-3 {{ animation-delay: 0.18s; opacity:0; }}
