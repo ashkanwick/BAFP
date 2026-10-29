@@ -31,4 +31,11 @@ assets/figures/*.png
 # IDE & Scratch
 .zcode/
 scratch/
+app_bak_*.py
+run_backups.bat
+stop_backups.bat
+
+# Session backup points & editor temp files — never ship these
+app.py.bak-*
+*.tmp.*
 

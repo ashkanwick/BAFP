@@ -391,7 +391,16 @@ def build_wordcloud_image(text: str, font_path: str | None = None) -> Any:
         return None
     from wordcloud import STOPWORDS, WordCloud
 
-    body = " ".join(shape_for_pillow(word) for word in text.split())
+    # Shape each UNIQUE word once — the expanded frequency string repeats words
+    # thousands of times and re-shaping every occurrence dominated the runtime.
+    shaped: dict[str, str] = {}
+    tokens: list[str] = []
+    for word in text.split():
+        piece = shaped.get(word)
+        if piece is None:
+            piece = shaped[word] = shape_for_pillow(word)
+        tokens.append(piece)
+    body = " ".join(tokens)
     cloud = WordCloud(
         font_path=font_path,
         width=900,

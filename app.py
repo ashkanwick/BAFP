@@ -157,8 +157,11 @@ def _inject_theme() -> None:
         /* Light-mode primary recolor: Streamlit's stock primary is red while the
            design system is indigo. Pin the native widgets to indigo so nothing
            renders red. */
-        /* Radio nav: selected dot */
-        [data-testid="stRadioOption"][data-selected="true"] > div > div > div { background-color: #6366F1 !important; }
+        /* Radio nav: selected dot — scoped to the circle container only; the
+           generic depth selector also matched the label's markdown container
+           and painted the whole nav row solid blue */
+        [data-testid="stRadioOption"][data-selected="true"] > div > div > div:not([data-testid="stMarkdownContainer"]) { background-color: #6366F1 !important; }
+        [data-testid="stRadioOption"] [data-testid="stMarkdownContainer"] { background-color: transparent !important; }
         /* Tabs: selected label + underline indicator */
         [data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"],
         [data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"] p { color: #4F46E5 !important; }
@@ -293,6 +296,10 @@ def _inject_theme() -> None:
         /* Native captions and alerts follow the Persian direction */
         [data-testid="stCaption"], .stCaption,
         [data-testid="stAlert"], [data-baseweb="notification"] {{ direction: rtl; text-align: right; }}
+        /* Sliders keep LTR track geometry (min at left, max at right), so their
+           tick labels and thumb value must follow the track — the inherited RTL
+           direction flips the labels and they end up swapped. */
+        [data-testid="stSliderTickBar"], [data-testid="stSliderThumbValue"] {{ direction: ltr; }}
         /* One fact per line — no mid-dot glued run-on sentences */
         .fa-lines > div {{ margin-bottom: 0.34rem; }}
         .fa-lines > div:last-child {{ margin-bottom: 0; }}
@@ -540,6 +547,41 @@ from src.visualize import (  # noqa: E402
 @st.cache_data(show_spinner="در حال آماده‌سازی قلم فارسی...")
 def ensure_font() -> tuple[str | None, str]:
     return _ensure_font()
+
+
+@st.cache_data(show_spinner=False)
+def cached_wordcloud_image(text: str, font_path: str | None) -> Any:
+    """Word-cloud PNG sized for display — a full-resolution image bloats the
+    element stream and drags out every rerun, which keeps stale page elements
+    visible while switching pages."""
+    image = build_wordcloud_image(text, font_path)
+    if image is not None and image.width > 900:
+        image = image.resize((900, round(image.height * 900 / image.width)))
+    return image
+
+
+@st.cache_data(show_spinner=False)
+def get_cached_top_words(corpus_file: str, scope: str, limit: int = 200) -> Counter[str]:
+    """Frequent words keyed by (corpus, sentiment scope) — hashing thousands of
+    texts on every rerun re-introduced seconds of server time."""
+    frame = load_cleaned(DATA_DIR / corpus_file)
+    if frame is None:
+        return Counter()
+    labelled = frame[frame["label_name"].notna()]
+    if scope != "همه":
+        english = {v: k for k, v in LABEL_FA.items()}[scope]
+        labelled = labelled[labelled["label_name"] == english]
+    text_column = "eda_text" if "eda_text" in labelled.columns else "clean_text"
+    return top_words(labelled[text_column].fillna("").astype(str), limit=limit)
+
+
+@st.cache_data(show_spinner=False)
+def get_cached_news_top_words(limit: int = 60) -> Counter[str]:
+    news = load_news(NEWS_CSV)
+    if news is None:
+        return Counter()
+    text_column = "body" if "body" in news.columns else "clean_text"
+    return top_words(news[text_column].fillna("").astype(str), limit=limit)
 
 
 # ==========================================================================
@@ -1090,9 +1132,19 @@ def page_dashboard(frame: pd.DataFrame | None, news: pd.DataFrame | None, model_
         st.markdown(metric_card("Macro-F1 آزمون", macro_f1, "معیار اصلی", "#8B5CF6", "🏆"), unsafe_allow_html=True)
 
     st.markdown('<div style="margin-top:1rem;"></div>', unsafe_allow_html=True)
-    tab_corpus, tab_model, tab_news = st.tabs(["📊 پیکره و توزیع داده‌ها", "🧠 ارزیابی مدل عمیق", "📰 نظرات خبری (بدون برچسب)"])
+    # Radio-based sections instead of st.tabs: tabs stream EVERY section's
+    # charts and tables on each rerun (even hidden ones), which drags the rerun
+    # out for seconds and keeps the previous page's elements on screen during
+    # page switches. Only the active section is rendered now.
+    section = st.radio(
+        "بخش داشبورد:",
+        ["📊 پیکره و توزیع داده‌ها", "🧠 ارزیابی مدل عمیق", "📰 نظرات خبری (بدون برچسب)"],
+        horizontal=True,
+        key="dash_section",
+    )
+    st.markdown('<div style="margin-top:0.6rem;"></div>', unsafe_allow_html=True)
 
-    with tab_corpus:
+    if section == "📊 پیکره و توزیع داده‌ها":
         mix_left, mix_right = st.columns([1, 1])
         with mix_left:
             st.markdown('<div class="fa-block" style="font-weight:700; margin-bottom:4px;">توزیع فراوانی احساسات</div>', unsafe_allow_html=True)
@@ -1109,7 +1161,7 @@ def page_dashboard(frame: pd.DataFrame | None, news: pd.DataFrame | None, model_
             english = {v: k for k, v in LABEL_FA.items()}[scope]
             subset = labelled[labelled["label_name"] == english]
         text_column = "eda_text" if "eda_text" in subset.columns else "clean_text"
-        words = top_words(subset[text_column].fillna("").astype(str), limit=200)
+        words = get_cached_top_words(corpus_name, scope, limit=200)
         chart_left, chart_right = st.columns([1, 1])
         with chart_left:
             st.markdown('<div class="fa-block" style="font-weight:700; margin-bottom:4px;">پرکاربردترین واژه‌ها</div>', unsafe_allow_html=True)
@@ -1118,7 +1170,7 @@ def page_dashboard(frame: pd.DataFrame | None, news: pd.DataFrame | None, model_
             st.markdown('<div class="fa-block" style="font-weight:700; margin-bottom:4px;">ابر کلمات فارسی (Word Cloud)</div>', unsafe_allow_html=True)
             font_path, font_note = ensure_font()
             if words:
-                image = build_wordcloud_image(word_cloud_text(words), font_path)
+                image = cached_wordcloud_image(word_cloud_text(words), font_path)
                 if image is not None:
                     st.image(image, width="stretch")
             st.caption(f"قلم نمایشی: {font_note}")
@@ -1126,11 +1178,16 @@ def page_dashboard(frame: pd.DataFrame | None, news: pd.DataFrame | None, model_
         st.markdown('<div style="margin-top:1.2rem;"></div>', unsafe_allow_html=True)
         st.markdown('<div class="fa-block" style="font-weight:700; margin-bottom:6px;">پیش‌نمایش تعاملی نمونه‌ای از پیکره</div>', unsafe_allow_html=True)
         preview_cols = [c for c in ["raw_text", "clean_text", "label_name", "rate", "split"] if c in labelled.columns]
-        preview = labelled[preview_cols].copy()
+        # Sample FIRST, then truncate — slicing 6402 long texts on every rerun
+        # costs server time that keeps stale page elements alive during switches
+        preview = labelled[preview_cols].sample(min(150, len(labelled)), random_state=42).copy()
+        for col in preview.columns:
+            if preview[col].dtype == "object" or str(preview[col].dtype) == "string":
+                preview[col] = preview[col].astype(str).str.slice(0, 140)
         rename_map = {"raw_text": "متن خام", "clean_text": "متن تمیزشده", "label_name": "برچسب احساس", "rate": "امتیاز (ستاره)", "split": "بخش داده"}
-        st.dataframe(preview.rename(columns=rename_map).sample(min(300, len(preview)), random_state=42), width="stretch", height=320)
+        st.dataframe(preview.rename(columns=rename_map), width="stretch", height=320)
 
-    with tab_model:
+    elif section == "🧠 ارزیابی مدل عمیق":
         if metrics is None:
             st.info("فایل metrics.json برای این مدل یافت نشد — با `python -m src.train` مدل را آموزش دهید.")
         else:
@@ -1196,7 +1253,7 @@ def page_dashboard(frame: pd.DataFrame | None, news: pd.DataFrame | None, model_
                     unsafe_allow_html=True,
                 )
 
-    with tab_news:
+    else:
         if news is None:
             st.info("پیکرهٔ نظرات خبری یافت نشد — با `python -m src.scraper --source news --out data/raw_news_comments.csv` جمع‌آوری کنید.")
         else:
@@ -1211,11 +1268,15 @@ def page_dashboard(frame: pd.DataFrame | None, news: pd.DataFrame | None, model_
             with n3:
                 st.markdown(metric_card("مجموع ناپسندها", f"{int(dislikes.sum()):,}", "تعامل منفی", "#EF4444", "👎"), unsafe_allow_html=True)
             body_column = "body" if "body" in news.columns else "clean_text"
-            words = top_words(news[body_column].fillna("").astype(str), limit=60)
+            words = get_cached_news_top_words(limit=60)
             st.markdown('<div class="fa-block" style="font-weight:700; margin-top:1rem; margin-bottom:4px;">واژگان شاخص نظرات ورزشی</div>', unsafe_allow_html=True)
             st.plotly_chart(top_words_bar(words, limit=18), width="stretch")
             news_cols = [c for c in ("comment_id", "news_title", "body", "likes", "dislikes", "created_at") if c in news.columns]
-            st.dataframe(news[news_cols].head(200), width="stretch", height=280)
+            news_view = news[news_cols].head(60).copy()
+            for col in ("news_title", "body"):
+                if col in news_view.columns:
+                    news_view[col] = news_view[col].astype(str).str.slice(0, 140)
+            st.dataframe(news_view, width="stretch", height=280)
             st.markdown('<div style="margin-top:1rem;"></div>', unsafe_allow_html=True)
             if st.button("🔮 پیش‌بینی احساسات ۲۰ نظر اخیر خبری با ParsBERT", key="predict_news_btn"):
                 predictor, message = get_predictor(str(model_dir))
@@ -1436,7 +1497,13 @@ def page_advisor(model_dir: Path) -> None:
     if analyze_btn and prod_input.strip():
         with st.spinner("در حال واکشی اطلاعات و نظرات از دیجی‌کالا و استنتاج با ParsBERT..."):
             try:
-                report = analyze_digikala_product(prod_input.strip(), max_comments=comments_limit, model_dir=model_dir)
+                cached_predictor, _ = get_predictor(str(model_dir))
+                report = analyze_digikala_product(
+                    prod_input.strip(),
+                    max_comments=comments_limit,
+                    model_dir=model_dir,
+                    predictor=cached_predictor,
+                )
                 st.session_state["advisor_report"] = report
                 try:
                     st.toast("تحلیل کالا با موفقیت انجام شد", icon="✅")
