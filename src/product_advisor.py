@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import logging
 import re
@@ -266,8 +267,9 @@ def fetch_product_comments(
 # ==========================================================================
 # 3. Sentiment Analysis Engine
 # ==========================================================================
+@functools.lru_cache(maxsize=2)
 def _get_predictor(model_dir: Path | None = None) -> Any:
-    """Load or initialize SentimentPredictor."""
+    """Load or initialize SentimentPredictor (cached per model_dir)."""
     target_dir = Path(model_dir or DEFAULT_MODEL_DIR)
     if not (target_dir / "config.json").exists():
         LOG.warning("Checkpoint %s not found. Using fallback sentiment heuristics.", target_dir)
@@ -502,6 +504,7 @@ def analyze_digikala_product(
     max_comments: int = 50,
     model_dir: Path | None = None,
     concurrent_fetch: bool = True,
+    predictor: Any | None = None,
 ) -> ProductAnalysisReport:
     """End-to-end pipeline: parse URL -> fetch info -> scrape comments -> analyze sentiment -> buy recommendation."""
     started = time.perf_counter()
@@ -526,7 +529,7 @@ def analyze_digikala_product(
         raw_comments = fetch_product_comments(pid, max_comments=max_comments)
 
     LOG.info("Analyzing sentiments with ParsBERT for %d comments...", len(raw_comments))
-    analyzed = analyze_comments_sentiment(raw_comments, model_dir=model_dir)
+    analyzed = analyze_comments_sentiment(raw_comments, predictor=predictor, model_dir=model_dir)
 
     LOG.info("Generating purchase recommendation...")
     rec = generate_purchase_recommendation(analyzed, product_info)
