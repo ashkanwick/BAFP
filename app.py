@@ -1832,10 +1832,32 @@ def main() -> None:
         )
         st.divider()
         corpora = _existing([CLEANED_CSV, WIDE_CLEANED_CSV])
-        corpus_choice = (st.selectbox("پیکره داده (Corpus)", [path.name for path in corpora], index=len(corpora) - 1) if corpora else None)
+        # Short Persian display labels (format_func keeps the filename as the
+        # value): long ASCII filenames overflow the fixed sidebar pill on
+        # systems that inflate text — Windows text scaling and browser
+        # minimum-font-size override even px sizes — truncating to
+        # "cleaned_comment…".
+        corpus_fa = {"cleaned_comments.csv": "اصلی (base)", "cleaned_comments_wide.csv": "گسترده (wide)"}
+        corpus_choice = (
+            st.selectbox(
+                "پیکره داده (Corpus)",
+                [path.name for path in corpora],
+                index=len(corpora) - 1,
+                format_func=lambda name: corpus_fa.get(name, name),
+                help="cleaned_comments.csv: اصلی؛ cleaned_comments_wide.csv: گسترده",
+            )
+            if corpora else None
+        )
         checkpoint_names = [path.name for path in available_models()]
+        ckpt_fa = {"parsbert-sentiment-3class": "ParsBERT (اصلی)", "parsbert-sentiment-3class-wide": "ParsBERT (گسترده)"}
         chosen = (
-            st.selectbox("مدل ذخیره‌شده (Checkpoint)", checkpoint_names, index=checkpoint_names.index(DEFAULT_MODEL_DIR.name) if DEFAULT_MODEL_DIR.name in checkpoint_names else 0, help="parsbert-sentiment-3class: پیکره ۱۶ کالا؛ -wide: پیکره ۵۳ کالا")
+            st.selectbox(
+                "مدل ذخیره‌شده (Checkpoint)",
+                checkpoint_names,
+                index=checkpoint_names.index(DEFAULT_MODEL_DIR.name) if DEFAULT_MODEL_DIR.name in checkpoint_names else 0,
+                format_func=lambda name: ckpt_fa.get(name, name.replace("parsbert-sentiment-", "")),
+                help="parsbert-sentiment-3class: پیکره ۱۶ کالا؛ -wide: پیکره ۵۳ کالا",
+            )
             if checkpoint_names else None
         )
         st.divider()
