@@ -32,6 +32,7 @@ Run:
 
 from __future__ import annotations
 
+import base64
 import html
 import io
 import json
@@ -125,6 +126,13 @@ def _inject_theme() -> None:
         div.stButton > button[kind="secondary"] { background: #1E2A45 !important; color: #E2E8F0 !important; border-color: #2E3D5E !important; }
         div.stButton > button[kind="secondary"]:hover { background: #24304E !important; border-color: #6366F1 !important; }
         div.stButton > button[kind="secondary"] p { color: #E2E8F0 !important; }
+        /* Tooltip-wrapped buttons (help=…) dodge the kind selectors — pin them
+           by testid so they never fall back to the browser's auto theme */
+        button[data-testid="stBaseButton-secondary"] { background: #1E2A45 !important; color: #E2E8F0 !important; border: 1px solid #2E3D5E !important; border-radius: var(--radius-sm) !important; font-weight: 500 !important; }
+        button[data-testid="stBaseButton-secondary"]:hover { background: #24304E !important; border-color: #6366F1 !important; color: #E2E8F0 !important; }
+        button[data-testid="stBaseButton-secondary"] p { color: #E2E8F0 !important; }
+        button[data-testid="stBaseButton-primary"] { background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%) !important; color: #fff !important; border: none !important; }
+        button[data-testid="stBaseButton-primary"] p { color: #fff !important; }
         code, pre { background: #0F172A !important; color: #E2E8F0 !important; border-radius: 8px; }
         [data-testid="stExpander"] { background: #151E32; border: 1px solid #24304E; border-radius: 14px; }
         [data-testid="stExpander"] summary { color: #E2E8F0; }
@@ -150,6 +158,25 @@ def _inject_theme() -> None:
         [data-testid="stSpinner"] { color: #CBD5E1; }
         [data-testid="stMultiInput"] input { background: #151E32 !important; color: #E2E8F0 !important; }
         [data-baseweb="tag"], [data-testid="stMultiInput"] div[data-baseweb="tag"] { background: #1E2A45 !important; color: #CBD5E1 !important; }
+        /* ---- Dark accent recolor: Streamlit's stock primary is red; the design
+           system is indigo. Mirror the light-mode widget recolor with the
+           brighter dark-palette indigo. ---- */
+        /* Radio nav: selected dot — scoped to the circle only, the generic depth
+           selector would paint the label's markdown container too (round-6 bug) */
+        [data-testid="stRadioOption"][data-selected="true"] > div > div > div:not([data-testid="stMarkdownContainer"]) { background-color: #818CF8 !important; }
+        [data-testid="stRadioOption"] [data-testid="stMarkdownContainer"] { background-color: transparent !important; }
+        /* Unselected radio circles: lift them off the dark background */
+        [data-testid="stRadioOption"] > div > div > div:not([data-testid="stMarkdownContainer"]) { border-color: #475569 !important; }
+        /* Slider: indigo rail, thumb and value */
+        [data-testid="stSlider"] div[role="group"] > div > div:not([style*="absolute"]) {
+            background-image: linear-gradient(to right, #818CF8 0%, #818CF8 100%) !important;
+            border-radius: 999px;
+        }
+        [data-testid="stSlider"] div[role="group"] > div > div[style*="absolute"] { background-color: #818CF8 !important; }
+        [data-testid="stSliderThumbValue"], [data-testid="stSliderThumbValue"] div,
+        [data-testid="stSliderThumbValue"] p { color: #A5B4FC !important; border-color: transparent !important; }
+        /* Tabs: selection indicator */
+        [data-testid="stTabs"] .react-aria-SelectionIndicator { background-color: #6366F1 !important; border-radius: 999px; }
         """
     else:
         streamlit_overrides = """
@@ -550,14 +577,20 @@ def ensure_font() -> tuple[str | None, str]:
 
 
 @st.cache_data(show_spinner=False)
-def cached_wordcloud_image(text: str, font_path: str | None) -> Any:
-    """Word-cloud PNG sized for display — a full-resolution image bloats the
-    element stream and drags out every rerun, which keeps stale page elements
-    visible while switching pages."""
+def cached_wordcloud_image(text: str, font_path: str | None) -> bytes | None:
+    """Word-cloud as PNG bytes. Encoding here (instead of letting Streamlit
+    marshal the PIL object) keeps the media identical across environments —
+    the .venv install served a broken image through Streamlit's own PIL
+    pipeline. Raw bytes also keep the element payload small so page switches
+    stay fast."""
     image = build_wordcloud_image(text, font_path)
-    if image is not None and image.width > 900:
+    if image is None:
+        return None
+    if image.width > 900:
         image = image.resize((900, round(image.height * 900 / image.width)))
-    return image
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 @st.cache_data(show_spinner=False)
@@ -1170,9 +1203,18 @@ def page_dashboard(frame: pd.DataFrame | None, news: pd.DataFrame | None, model_
             st.markdown('<div class="fa-block" style="font-weight:700; margin-bottom:4px;">ابر کلمات فارسی (Word Cloud)</div>', unsafe_allow_html=True)
             font_path, font_note = ensure_font()
             if words:
-                image = cached_wordcloud_image(word_cloud_text(words), font_path)
-                if image is not None:
-                    st.image(image, width="stretch")
+                png_bytes = cached_wordcloud_image(word_cloud_text(words), font_path)
+                if png_bytes:
+                    # Inline data-URI instead of st.image: the /media pipeline
+                    # crashes under some installs (gzip middleware ASGI error,
+                    # broken image), the inline form serves everywhere.
+                    png_b64 = base64.b64encode(png_bytes).decode("ascii")
+                    st.markdown(
+                        f'<div dir="rtl" style="text-align:center;">'
+                        f'<img src="data:image/png;base64,{png_b64}" alt="ابر کلمات فارسی" '
+                        'style="max-width:100%; height:auto; border-radius:12px;" /></div>',
+                        unsafe_allow_html=True,
+                    )
             st.caption(f"قلم نمایشی: {font_note}")
 
         st.markdown('<div style="margin-top:1.2rem;"></div>', unsafe_allow_html=True)
