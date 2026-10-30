@@ -3,3 +3,16 @@
 # back to system fonts with different metrics.
 [server]
 enableStaticServing = true
+
+# Native base theme = dark with the app's exact palette. Streamlit-native
+# widgets (dataframe grid, alerts, toasts, multiselect) are themed from this
+# server-side value and CANNOT be reached by the injected CSS — before this
+# they rendered as white islands inside the CSS-dark shell. The light mode
+# keeps its custom CSS shell; its native widgets stay dark except where the
+# light branch explicitly re-styles them.
+[theme]
+base = "dark"
+primaryColor = "#6366F1"
+backgroundColor = "#0B1220"
+secondaryBackgroundColor = "#151E32"
+textColor = "#E2E8F0"

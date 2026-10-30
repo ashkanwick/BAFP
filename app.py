@@ -188,12 +188,10 @@ def _inject_theme() -> None:
         [data-testid="stRadioOption"] [data-testid="stMarkdownContainer"] { background-color: transparent !important; }
         /* Unselected radio circles: lift them off the dark background */
         [data-testid="stRadioOption"] > div > div > div:not([data-testid="stMarkdownContainer"]) { border-color: #475569 !important; }
-        /* Slider: indigo rail, thumb and value */
-        [data-testid="stSlider"] div[role="group"] > div > div:not([style*="absolute"]) {
-            background-image: linear-gradient(to right, #818CF8 0%, #818CF8 100%) !important;
-            border-radius: 999px;
-        }
-        [data-testid="stSlider"] div[role="group"] > div > div[style*="absolute"] { background-color: #818CF8 !important; }
+        /* Slider: native theming (config.toml [theme] base=dark, primaryColor
+           #6366F1) fills the track proportionally — the old full-track
+           gradient override painted the whole rail indigo regardless of value.
+           Only the thumb-value text color stays pinned. */
         [data-testid="stSliderThumbValue"], [data-testid="stSliderThumbValue"] div,
         [data-testid="stSliderThumbValue"] p { color: #A5B4FC !important; border-color: transparent !important; }
         /* Tabs: selection indicator */
@@ -214,12 +212,10 @@ def _inject_theme() -> None:
         [data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"],
         [data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"] p { color: #4F46E5 !important; }
         [data-testid="stTabs"] .react-aria-SelectionIndicator { background-color: #6366F1 !important; border-radius: 999px; }
-        /* Slider: indigo rail, thumb and value */
-        [data-testid="stSlider"] div[role="group"] > div > div:not([style*="absolute"]) {
-            background-image: linear-gradient(to right, #6366F1 0%, #6366F1 100%) !important;
-            border-radius: 999px;
-        }
-        [data-testid="stSlider"] div[role="group"] > div > div[style*="absolute"] { background-color: #6366F1 !important; }
+        /* Slider: native theming (config.toml [theme] primaryColor #6366F1)
+           fills the track proportionally — the old full-track gradient
+           override painted the whole rail indigo regardless of value. Only
+           the thumb-value text color stays pinned. */
         [data-testid="stSliderThumbValue"], [data-testid="stSliderThumbValue"] div,
         [data-testid="stSliderThumbValue"] p { color: #4F46E5 !important; border-color: transparent !important; }
         /* Buttons: every variant pinned to the light palette (baseweb auto-themes
@@ -1420,7 +1416,13 @@ def page_batch(model_dir: Path) -> None:
                 uploaded_file.seek(0)
                 df_upload = pd.read_csv(uploaded_file, encoding="utf-8", errors="replace")
             st.success(f"فایل بارگذاری شد: {len(df_upload):,} سطر و {len(df_upload.columns)} ستون")
-            text_candidates = [c for c in df_upload.columns if df_upload[c].dtype == "object"]
+            # pandas 3.0 gives CSV string columns the new `str` dtype — testing
+            # only "object" (pandas 2.x) left text_candidates empty and crashed
+            # the page with KeyError: None on the column selectbox.
+            text_candidates = [
+                c for c in df_upload.columns
+                if df_upload[c].dtype == "object" or str(df_upload[c].dtype) in ("str", "string")
+            ]
             default_idx = 0
             for idx, c in enumerate(text_candidates):
                 if any(k in c.lower() for k in ["body", "comment", "text", "clean", "متن", "نظر"]):
