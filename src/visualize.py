@@ -380,7 +380,7 @@ def plot_confusion_matrix(metrics: dict[str, Any], path: Path) -> Path | None:
     return _save(figure, path)
 
 
-def build_wordcloud_image(text: str, font_path: str | None = None) -> Any:
+def build_wordcloud_image(text: str, font_path: str | None = None, is_dark: bool = False) -> Any:
     """Word cloud as a PIL image, or None when it cannot be rendered.
 
     ``WordCloud.generate()`` returns the WordCloud object; callers need
@@ -401,11 +401,14 @@ def build_wordcloud_image(text: str, font_path: str | None = None) -> Any:
             piece = shaped[word] = shape_for_pillow(word)
         tokens.append(piece)
     body = " ".join(tokens)
+    # Match the app's own surface so the word cloud never flashes a white
+    # rectangle in dark mode.
+    background = "#151E32" if is_dark else "white"
     cloud = WordCloud(
         font_path=font_path,
         width=900,
         height=460,
-        background_color="white",
+        background_color=background,
         max_words=140,
         relative_scaling=0.45,
         stopwords=set(STOPWORDS),

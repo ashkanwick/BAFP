@@ -108,6 +108,15 @@ def _inject_theme() -> None:
     # Primary palette stays vibrant in both modes
     primary = "#6366F1"
     primary_2 = "#8B5CF6"
+    # Gradient title: the style block is re-injected on every theme change, so
+    # bake the gradient in directly — a [data-theme] ancestor hook never
+    # matches because the marker div is a sibling of the content, not its
+    # ancestor.
+    title_gradient = (
+        "linear-gradient(135deg, #A5B4FC 0%, #818CF8 35%, #22D3EE 70%, #34D399 100%)"
+        if is_dark
+        else "linear-gradient(135deg, #1E1B4B 0%, #6366F1 35%, #06B6D4 70%, #10B981 100%)"
+    )
 
     # Streamlit chrome (labels, tabs, selects, expanders, uploader, inputs) is
     # light-native: when dark mode is active, restyle every widget container so
@@ -142,8 +151,20 @@ def _inject_theme() -> None:
         [data-baseweb="tab"]:hover { color: #E2E8F0 !important; }
         [data-baseweb="tab"][aria-selected="true"] { color: #A5B4FC !important; }
         [data-baseweb="tab-highlight"] { background: #6366F1 !important; border-radius: 4px; }
-        div[data-baseweb="select"] > div { background: #151E32 !important; border-color: #24304E !important; color: #E2E8F0 !important; }
-        div[data-baseweb="select"] > div > div, div[data-baseweb="select"] svg { color: #94A3B8 !important; fill: #94A3B8; }
+        /* Selectbox: 1.59 renders selects as a react-aria ComboBox — the old
+           data-baseweb="select" hooks match nothing, leaving a white control
+           with dark text. Keep the legacy selectors alongside. */
+        .react-aria-ComboBox > div, div[data-baseweb="select"] > div { background: #151E32 !important; border-color: #24304E !important; color: #E2E8F0 !important; }
+        .react-aria-ComboBox input { background: transparent !important; color: #E2E8F0 !important; caret-color: #E2E8F0 !important; }
+        .react-aria-ComboBox button { color: #94A3B8 !important; }
+        div[data-baseweb="select"] > div > div, div[data-baseweb="select"] svg, .react-aria-ComboBox svg { color: #94A3B8 !important; fill: #94A3B8; }
+        /* Open dropdown: the floating listbox has no opaque surface of its own
+           and inherits dark option text — paint the panel and options. */
+        [data-testid="stSelectboxVirtualDropdown"] { background: #1E2A45 !important; border: 1px solid #2E3D5E !important; border-radius: 10px !important; box-shadow: var(--shadow-md) !important; overflow: hidden; }
+        [data-testid="stSelectboxVirtualDropdown"] [role="option"],
+        [data-testid="stSelectboxVirtualDropdown"] [role="option"] > div { color: #E2E8F0 !important; }
+        [data-testid="stSelectboxVirtualDropdown"] [role="option"][data-focused="true"] > div,
+        [data-testid="stSelectboxVirtualDropdown"] [role="option"][aria-selected="true"] > div { background: rgba(99,102,241,0.28) !important; }
         [data-baseweb="popover"], [data-baseweb="menu"] { background: #1E2A45 !important; border-color: #2E3D5E !important; }
         [data-baseweb="menu"] li { color: #CBD5E1 !important; }
         [data-baseweb="menu"] li:hover { background: #24304E !important; }
@@ -154,7 +175,7 @@ def _inject_theme() -> None:
         [data-testid="stTextInput"] input { background: #151E32 !important; color: #E2E8F0 !important; border-color: #24304E !important; border-radius: 10px; }
         [data-testid="stTextInput"] label p { color: #E2E8F0 !important; }
         [data-testid="stNumberInput"] input { background: #151E32 !important; color: #E2E8F0 !important; }
-        [data-testid="stDivider"] { background: #24304E !important; }
+        [data-testid="stDivider"], [data-testid="stMain"] hr { background: #24304E !important; border: none !important; }
         [data-testid="stSpinner"] { color: #CBD5E1; }
         [data-testid="stMultiInput"] input { background: #151E32 !important; color: #E2E8F0 !important; }
         [data-baseweb="tag"], [data-testid="stMultiInput"] div[data-baseweb="tag"] { background: #1E2A45 !important; color: #CBD5E1 !important; }
@@ -276,7 +297,7 @@ def _inject_theme() -> None:
 
         /* ---- Global RTL shell: sidebar at the right edge, RTL flow ---- */
         [data-testid="stAppViewContainer"] {{ flex-direction: row-reverse; }}
-        [data-testid="stMain"], [data-testid="stSidebarContentContainer"] {{ direction: rtl; }}
+        [data-testid="stMain"], [data-testid="stSidebarContent"], [data-testid="stSidebarContentContainer"] {{ direction: rtl; }}
         /* Sidebar header keeps LTR metrics; flip it so the collapse control
            hugs the INNER edge (towards the content) and the arrow points
            toward the right-hand sidebar. */
@@ -353,7 +374,7 @@ def _inject_theme() -> None:
         }}
 
         /* Select & inputs */
-        div[data-baseweb="select"] > div {{
+        div[data-baseweb="select"] > div, .react-aria-ComboBox > div {{
             border-radius: var(--radius-sm) !important;
             border-color: var(--border) !important;
             background: var(--surface) !important;
@@ -376,14 +397,10 @@ def _inject_theme() -> None:
 
         /* Gradient title */
         .gradient-title {{
-            background: linear-gradient(135deg, #1E1B4B 0%, #6366F1 35%, #06B6D4 70%, #10B981 100%);
+            background: {title_gradient};
             background-size: 200% 200%; animation: gradientFlow 9s ease infinite;
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             font-size: 2.0rem; font-weight: 800; line-height: 1.35; margin: 0;
-        }}
-        [data-theme="dark"] .gradient-title {{
-            background: linear-gradient(135deg, #A5B4FC 0%, #818CF8 35%, #22D3EE 70%, #34D399 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }}
         .sidebar-brand {{
             background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #3B82F6 100%);
@@ -512,7 +529,7 @@ def _inject_theme() -> None:
         [data-testid="stSidebar"] label p {{ color: var(--text) !important; font-weight: 600; }}
 
         /* Hide Streamlit chrome cruft (menu, footer, cloud Deploy button) */
-        #MainMenu, footer, [data-testid="stAppDeployButton"] {{ display: none !important; }}
+        #MainMenu, footer, [data-testid="stAppDeployButton"], [data-testid="stMainMenu"] {{ display: none !important; }}
 
         {streamlit_overrides}
         </style>
@@ -577,13 +594,13 @@ def ensure_font() -> tuple[str | None, str]:
 
 
 @st.cache_data(show_spinner=False)
-def cached_wordcloud_image(text: str, font_path: str | None) -> bytes | None:
+def cached_wordcloud_image(text: str, font_path: str | None, is_dark: bool = False) -> bytes | None:
     """Word-cloud as PNG bytes. Encoding here (instead of letting Streamlit
     marshal the PIL object) keeps the media identical across environments —
     the .venv install served a broken image through Streamlit's own PIL
     pipeline. Raw bytes also keep the element payload small so page switches
     stay fast."""
-    image = build_wordcloud_image(text, font_path)
+    image = build_wordcloud_image(text, font_path, is_dark=is_dark)
     if image is None:
         return None
     if image.width > 900:
@@ -867,10 +884,11 @@ def confusion_heatmap(metrics: dict[str, Any]) -> go.Figure:
     matrix = test.get("confusion_matrix")
     if not matrix:
         return go.Figure()
+    is_dark = _get_theme() == "dark"
     labels = test.get("labels", LABEL_ORDER)
     names = [LABEL_FA.get(label, label) for label in labels]
-    figure = go.Figure(go.Heatmap(z=matrix, x=names, y=names, colorscale=[[0, "#EEF2FF"], [0.5, "#818CF8"], [1, "#312E81"]], text=matrix, texttemplate="<b>%{text}</b>", textfont={"size": 14, "color": "black"}, hovertemplate="واقعی: %{y}<br>پیش‌بینی: %{x}<br>تعداد: %{z}<extra></extra>"))
-    figure.update_layout(template="plotly_white", font={"family": "Vazirmatn, Tahoma, sans-serif"}, height=340, margin={"l": 10, "r": 10, "t": 30, "b": 10}, xaxis_title="پیش‌بینی مدل (Predicted)", yaxis_title="برچسب واقعی (Actual)", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    figure = go.Figure(go.Heatmap(z=matrix, x=names, y=names, colorscale=[[0, "#EEF2FF"], [0.5, "#818CF8"], [1, "#312E81"]], text=matrix, texttemplate="<b>%{text}</b>", textfont={"size": 14, "color": "#E2E8F0" if is_dark else "black"}, hovertemplate="واقعی: %{y}<br>پیش‌بینی: %{x}<br>تعداد: %{z}<extra></extra>"))
+    figure.update_layout(template="plotly_dark" if is_dark else "plotly_white", font={"family": "Vazirmatn, Tahoma, sans-serif"}, height=340, margin={"l": 10, "r": 10, "t": 30, "b": 10}, xaxis_title="پیش‌بینی مدل (Predicted)", yaxis_title="برچسب واقعی (Actual)", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     return figure
 
 
@@ -1195,6 +1213,7 @@ def page_dashboard(frame: pd.DataFrame | None, news: pd.DataFrame | None, model_
             subset = labelled[labelled["label_name"] == english]
         text_column = "eda_text" if "eda_text" in subset.columns else "clean_text"
         words = get_cached_top_words(corpus_name, scope, limit=200)
+        is_dark = _get_theme() == "dark"
         chart_left, chart_right = st.columns([1, 1])
         with chart_left:
             st.markdown('<div class="fa-block" style="font-weight:700; margin-bottom:4px;">پرکاربردترین واژه‌ها</div>', unsafe_allow_html=True)
@@ -1203,7 +1222,7 @@ def page_dashboard(frame: pd.DataFrame | None, news: pd.DataFrame | None, model_
             st.markdown('<div class="fa-block" style="font-weight:700; margin-bottom:4px;">ابر کلمات فارسی (Word Cloud)</div>', unsafe_allow_html=True)
             font_path, font_note = ensure_font()
             if words:
-                png_bytes = cached_wordcloud_image(word_cloud_text(words), font_path)
+                png_bytes = cached_wordcloud_image(word_cloud_text(words), font_path, is_dark=is_dark)
                 if png_bytes:
                     # Inline data-URI instead of st.image: the /media pipeline
                     # crashes under some installs (gzip middleware ASGI error,
@@ -1477,9 +1496,10 @@ def page_batch(model_dir: Path) -> None:
         col_table, col_pie = st.columns([1.6, 1])
         with col_pie:
             st.markdown('<div class="fa-block" style="font-weight:700; margin-bottom:4px;">توزیع احساسات این دسته</div>', unsafe_allow_html=True)
+            is_dark = _get_theme() == "dark"
             pie_counts = pd.Series([neg_cnt, neu_cnt, pos_cnt], index=["negative", "neutral", "positive"])
             pie_fig = go.Figure(go.Pie(labels=[LABEL_FA[n] for n in pie_counts.index], values=pie_counts.values.tolist(), hole=0.48, marker={"colors": [LABEL_COLORS[n] for n in pie_counts.index]}, textinfo="label+percent", hovertemplate="<b>%{label}</b>: %{value} نظر (%{percent})<extra></extra>"))
-            pie_fig.update_layout(template="plotly_white", font={"family": "Vazirmatn, Tahoma, sans-serif"}, height=260, margin={"l": 10, "r": 10, "t": 10, "b": 10}, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            pie_fig.update_layout(template="plotly_dark" if is_dark else "plotly_white", font={"family": "Vazirmatn, Tahoma, sans-serif", "color": "#E2E8F0" if is_dark else "#0F172A"}, height=260, margin={"l": 10, "r": 10, "t": 10, "b": 10}, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(pie_fig, width="stretch")
         with col_table:
             st.markdown('<div class="fa-block" style="font-weight:700; margin-bottom:4px;">جدول نتایج تفکیکی</div>', unsafe_allow_html=True)
