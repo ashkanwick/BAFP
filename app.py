@@ -348,9 +348,11 @@ def _inject_theme() -> None:
         }}
         /* Header band should never flash a foreign color in dark mode */
         [data-testid="stHeader"] {{ background: transparent !important; }}
-        /* Latin-only surfaces stay LTR */
-        pre, code, [data-testid="stCodeBlock"], [data-testid="stTextInput"] input,
-        .react-aria-ComboBox input {{
+        /* Latin-only surfaces stay LTR. Text inputs are NOT included: the
+           advisor URL field starts with Persian prose and the user wants it
+           flowing RTL like the textarea (the URL segment still renders as an
+           LTR island inside it). Selectbox values (filenames) stay LTR. */
+        pre, code, [data-testid="stCodeBlock"], .react-aria-ComboBox input {{
             direction: ltr; text-align: left;
         }}
         /* Native captions and alerts follow the Persian direction */
