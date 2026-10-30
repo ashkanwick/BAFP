@@ -543,6 +543,12 @@ def _inject_theme() -> None:
         /* Sidebar widget labels: guaranteed contrast in BOTH themes */
         [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,
         [data-testid="stSidebar"] label p {{ color: var(--text) !important; font-weight: 600; }}
+        /* Sidebar nav: the only radio inside the sidebar is the page menu —
+           give its five rows extra height so the menu extends into the empty
+           space before the divider. st.divider's own 32px side margins are
+           trimmed to match. */
+        [data-testid="stSidebar"] [data-testid="stRadioOption"] {{ padding-block: 6px; }}
+        [data-testid="stSidebar"] hr {{ margin-top: 8px !important; margin-bottom: 8px !important; }}
 
         /* Hide Streamlit chrome cruft (menu, footer, cloud Deploy button) */
         #MainMenu, footer, [data-testid="stAppDeployButton"], [data-testid="stMainMenu"] {{ display: none !important; }}
