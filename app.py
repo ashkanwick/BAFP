@@ -186,8 +186,10 @@ def _inject_theme() -> None:
            selector would paint the label's markdown container too (round-6 bug) */
         [data-testid="stRadioOption"][data-selected="true"] > div > div > div:not([data-testid="stMarkdownContainer"]) { background-color: #818CF8 !important; }
         [data-testid="stRadioOption"] [data-testid="stMarkdownContainer"] { background-color: transparent !important; }
-        /* Unselected radio circles: lift them off the dark background */
-        [data-testid="stRadioOption"] > div > div > div:not([data-testid="stMarkdownContainer"]) { border-color: #475569 !important; }
+        /* Unselected radio circles: native dark paints a textColor@20% wash
+           that reads as a glowing white dot — strip the fill, keep a visible
+           border. The [data-selected] rule overrides the fill back to indigo. */
+        [data-testid="stRadioOption"] > div > div > div:not([data-testid="stMarkdownContainer"]) { border-color: #475569 !important; background-color: transparent !important; }
         /* Slider: native theming (config.toml [theme] base=dark, primaryColor
            #6366F1) fills the track proportionally — the old full-track
            gradient override painted the whole rail indigo regardless of value.
