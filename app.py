@@ -1647,6 +1647,7 @@ def page_advisor(model_dir: Path) -> None:
             f'</div>',
             unsafe_allow_html=True,
         )
+        st.markdown('<div style="margin-top:0.85rem;"></div>', unsafe_allow_html=True)
         m1, m2, m3, m4 = st.columns(4)
         with m1:
             st.markdown(metric_card("نظرات تحلیل‌شده", f"{report.analyzed_count}", f"در {report.elapsed_seconds} ثانیه", "#6366F1", "💬"), unsafe_allow_html=True)
@@ -1657,6 +1658,7 @@ def page_advisor(model_dir: Path) -> None:
         with m4:
             buyer_stat = f"{rec.buyer_positive_ratio*100:.1f}٪" if rec.buyer_comments_count else "نامشخص"
             st.markdown(metric_card("رضایت خریداران قطعی", buyer_stat, f"از {rec.buyer_comments_count} خریدار", "#F59E0B", "🛒"), unsafe_allow_html=True)
+        st.markdown('<div style="margin-top:1.1rem;"></div>', unsafe_allow_html=True)
 
         # Donut: sentiment mix of the analyzed comments
         total_c = max(rec.total_comments, 1)
@@ -1691,16 +1693,19 @@ def page_advisor(model_dir: Path) -> None:
         )
         st.plotly_chart(donut, width="stretch")
         if rec.top_advantages or rec.top_disadvantages:
+            is_dark = _get_theme() == "dark"
+            adv_chip = ("rgba(16,185,129,0.14)", "#6EE7B7", "rgba(16,185,129,0.35)") if is_dark else ("#ECFDF5", "#047857", "#A7F3D0")
+            dis_chip = ("rgba(239,68,68,0.14)", "#FCA5A5", "rgba(239,68,68,0.35)") if is_dark else ("#FEF2F2", "#B91C1C", "#FECACA")
             adv_col, dis_col = st.columns(2)
             with adv_col:
                 if rec.top_advantages:
                     st.markdown('<div class="fa-block" style="font-weight:700; color:#10B981; margin-top:1rem; margin-bottom:6px;">👍 نقاط قوت پربسامد:</div>', unsafe_allow_html=True)
-                    chips = "".join(f'<span class="chip" style="background:#ECFDF5; color:#047857; border-color:#A7F3D0;">✓ {fa(a)}</span>' for a in rec.top_advantages)
+                    chips = "".join(f'<span class="chip" style="background:{adv_chip[0]}; color:{adv_chip[1]}; border-color:{adv_chip[2]};">✓ {fa(a)}</span>' for a in rec.top_advantages)
                     st.markdown(chips, unsafe_allow_html=True)
             with dis_col:
                 if rec.top_disadvantages:
                     st.markdown('<div class="fa-block" style="font-weight:700; color:#EF4444; margin-top:1rem; margin-bottom:6px;">👎 نقاط ضعف مکرر:</div>', unsafe_allow_html=True)
-                    chips = "".join(f'<span class="chip" style="background:#FEF2F2; color:#B91C1C; border-color:#FECACA;">✗ {fa(d)}</span>' for d in rec.top_disadvantages)
+                    chips = "".join(f'<span class="chip" style="background:{dis_chip[0]}; color:{dis_chip[1]}; border-color:{dis_chip[2]};">✗ {fa(d)}</span>' for d in rec.top_disadvantages)
                     st.markdown(chips, unsafe_allow_html=True)
         if rec.reasons_fa:
             with st.expander("📌 دلایل تصمیم‌گیری مدل", expanded=True):
