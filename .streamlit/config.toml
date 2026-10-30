@@ -1,0 +1,5 @@
+# Serve ./static/ (local Vazirmatn font) so the UI never depends on
+# fonts.googleapis.com — blocked or slow CDNs stall first paint and fall
+# back to system fonts with different metrics.
+[server]
+enableStaticServing = true

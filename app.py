@@ -254,7 +254,20 @@ def _inject_theme() -> None:
     st.markdown(
         f"""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+        /* Vazirmatn is served LOCALLY via Streamlit static serving
+           (.streamlit/config.toml -> static/fonts/). The old Google Fonts
+           @import rendered differently (or timed out on first paint) wherever
+           fonts.googleapis.com is blocked or slow. One variable file covers
+           weights 100-900. */
+        @font-face {{
+            font-family: 'Vazirmatn';
+            /* Streamlit mounts ./static under /app/static — a bare /static
+               path falls through to the SPA HTML instead of the font. */
+            src: url('/app/static/fonts/Vazirmatn-Variable.ttf') format('truetype');
+            font-weight: 100 900;
+            font-style: normal;
+            font-display: swap;
+        }}
 
         :root {{
             --bg: {bg};
@@ -338,7 +351,8 @@ def _inject_theme() -> None:
         /* Header band should never flash a foreign color in dark mode */
         [data-testid="stHeader"] {{ background: transparent !important; }}
         /* Latin-only surfaces stay LTR */
-        pre, code, [data-testid="stCodeBlock"], [data-testid="stTextInput"] input {{
+        pre, code, [data-testid="stCodeBlock"], [data-testid="stTextInput"] input,
+        .react-aria-ComboBox input {{
             direction: ltr; text-align: left;
         }}
         /* Native captions and alerts follow the Persian direction */
@@ -379,6 +393,10 @@ def _inject_theme() -> None:
             border-color: var(--border) !important;
             background: var(--surface) !important;
         }}
+        /* Select value: a px font-size keeps the filename inside the
+           fixed-width pill even when a browser "large font" setting scales
+           every rem-sized text (rem 18+ overflowed and clipped the value). */
+        .react-aria-ComboBox input {{ font-size: 13px; }}
 
         /* Headings */
         h1, h2, h3, h4 {{ letter-spacing: -0.02em; font-weight: 700; color: var(--text); }}
