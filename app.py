@@ -1667,6 +1667,9 @@ def page_advisor(model_dir: Path) -> None:
             "neutral": round(rec.neutral_ratio * total_c),
             "negative": round(rec.negative_ratio * total_c),
         }
+        # Zero-count slices are dropped: their labels cannot sit inside the
+        # ring and used to float outside, colliding with the chart title.
+        mix_counts = {k: v for k, v in mix_counts.items() if v > 0}
         donut = go.Figure(
             go.Pie(
                 labels=[LABEL_FA[k] for k in mix_counts],
@@ -1674,7 +1677,11 @@ def page_advisor(model_dir: Path) -> None:
                 hole=0.62,
                 marker={"colors": [LABEL_COLORS[k] for k in mix_counts]},
                 textinfo="value+percent",
-                textfont={"family": "Vazirmatn, Tahoma, sans-serif", "size": 12},
+                # Keep the counts INSIDE the ring: two-line outside labels used
+                # to push past the plot area and clash with the title above.
+                textposition="inside",
+                insidetextorientation="horizontal",
+                textfont={"family": "Vazirmatn, Tahoma, sans-serif", "size": 12, "color": "#FFFFFF"},
                 hovertemplate="<b>%{label}</b>: %{value} نظر (%{percent})<extra></extra>",
             )
         )
