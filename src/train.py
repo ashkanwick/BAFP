@@ -470,12 +470,16 @@ def train(
             labels = batch["label"].to(device)
 
             optimizer.zero_grad(set_to_none=True)
-            outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-            outputs.loss.backward()
+            # Loss must come from the class-weighted criterion: passing labels=
+            # to the model would use HF's internal UNWEIGHTED CrossEntropyLoss
+            # and the weights would never touch a gradient.
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+            loss = criterion(outputs.logits, labels)
+            loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             scheduler.step()
-            epoch_loss += float(outputs.loss.item())
+            epoch_loss += float(loss.item())
 
             if step % 20 == 0 or step == len(train_loader):
                 elapsed = time.time() - epoch_started
