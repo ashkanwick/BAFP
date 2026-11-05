@@ -37,6 +37,7 @@ import html
 import io
 import json
 import sys
+import threading
 import time
 from collections import Counter
 from datetime import datetime
@@ -943,7 +944,7 @@ _EMOJI_MAP: dict[str, str] = {"positive": "😊", "neutral": "😐", "negative":
 EXAMPLES: tuple[tuple[str, str], ...] = (
     ("positive", "کیفیتش عالی بود و کاملاً راضی‌ام، ارسالش هم سریع بود"),
     ("negative", "به‌شدت بد بود و اصلاً ارزش خرید ندارد"),
-    ("neutral", "معمولی است؛ نه خیلی خوب نه خیلی بد"),
+    ("neutral", "بسته‌بندی معمولی بود، انتظار بیشتری داشتم"),
 )
 
 
@@ -1030,6 +1031,14 @@ def _use_example(example: str) -> None:
 def _clear_panel() -> None:
     st.session_state["user_text"] = ""
     st.session_state.pop("prediction", None)
+
+
+def _use_sample_product(url: str) -> None:
+    """Advisor sample pill: write the WIDGET's key before the next run
+    instantiates it. Feeding a shadow key back through value= does nothing
+    after first render — Streamlit honors value= only on first instantiation
+    (the same ordering bug apptest caught on the prediction page)."""
+    st.session_state["product_url_text_input"] = url
 
 
 def page_prediction(model_dir: Path) -> None:
@@ -1572,12 +1581,12 @@ def page_advisor(model_dir: Path) -> None:
     with col_samples:
         st.markdown('<div class="fa-block" style="font-size:0.85rem; font-weight:600; margin-bottom:4px;">کالاهای نمونه برای تست سریع:</div>', unsafe_allow_html=True)
         s1, s2 = st.columns(2)
-        if s1.button("گوشی Galaxy A56", key="sample_a56", use_container_width=True):
-            st.session_state["product_url_input"] = "https://www.digikala.com/product/dkp-18575915/"
-        if s2.button("هدفون بلوتوثی P47", key="sample_p47", use_container_width=True):
-            st.session_state["product_url_input"] = "https://www.digikala.com/product/dkp-5112620/"
+        s1.button("گوشی Galaxy A56", key="sample_a56", use_container_width=True,
+                  on_click=_use_sample_product, args=("https://www.digikala.com/product/dkp-18575915/",))
+        s2.button("هدفون بلوتوثی P47", key="sample_p47", use_container_width=True,
+                  on_click=_use_sample_product, args=("https://www.digikala.com/product/dkp-5112620/",))
     with col_in:
-        prod_input = st.text_input("آدرس یا شناسه کالای دیجی‌کالا (URL یا کد dkp):", value=st.session_state.get("product_url_input", ""), placeholder="مثال: https://www.digikala.com/product/dkp-18575915/ یا 18575915", key="product_url_text_input")
+        prod_input = st.text_input("آدرس یا شناسه کالای دیجی‌کالا (URL یا کد dkp):", placeholder="مثال: https://www.digikala.com/product/dkp-18575915/ یا 18575915", key="product_url_text_input")
 
     c_cnt, c_btn = st.columns([1.5, 1])
     with c_cnt:
@@ -1902,10 +1911,23 @@ def main() -> None:
         )
 
     model_dir = MODELS_DIR / chosen if chosen else DEFAULT_MODEL_DIR
-    frame = load_cleaned(Path(DATA_DIR / corpus_choice)) if corpus_choice else None
-    news = load_news(NEWS_CSV)
+
+    # Prewarm the predictor in a background thread: cache_resource loads the
+    # model once per SERVER process, so the first predict/advisor click no
+    # longer pays the multi-second load+quantize+warmup stall. Streamlit caches
+    # are thread-safe; a daemon thread dies cleanly if the session ends first.
+    threading.Thread(
+        target=get_predictor, args=(str(model_dir),), daemon=True,
+        name="bafp-model-prewarm",
+    ).start()
 
     if page == "Dashboard":
+        # Corpus CSVs load ONLY on the dashboard page: the wide corpus (11.8 MB)
+        # is the default sidebar selection, and reading it during EVERY page's
+        # rerun made advisor/batch/help switches pay an I/O + parse cost that
+        # page never uses (cache_data only helps after the first read).
+        frame = load_cleaned(Path(DATA_DIR / corpus_choice)) if corpus_choice else None
+        news = load_news(NEWS_CSV)
         page_dashboard(frame, news, model_dir, corpus_choice or "none")
     elif page == "Live prediction":
         page_prediction(model_dir)
