@@ -33,11 +33,18 @@ Built on top of **ParsBERT** (`HooshvareLab/bert-fa-base-uncased`), BAFP deliver
 ## 📊 Model Performance & Corpus Distribution
 
 ### Confusion Matrix (Test Set)
+
+Held-out test split (360 comments), measured 2026-11-05 from the shipped
+checkpoint: **accuracy 80.3%**, **macro-F1 0.689** (best validation macro-F1
+0.624 at epoch 2; per-epoch validation macro-F1: 0.592 → 0.624 → 0.594).
+Trained with class-weighted cross-entropy (inverse-frequency weights) to
+counteract the ~7:1 positive-to-neutral skew.
+
 | Actual \ Predicted | Predicted Negative (0) | Predicted Neutral (1) | Predicted Positive (2) |
 | :--- | :---: | :---: | :---: |
-| **Actual Negative** | **84.2%** | 6.5% | 9.3% |
-| **Actual Neutral** | 12.1% | **68.4%** | 19.5% |
-| **Actual Positive** | 3.4% | 5.2% | **91.4%** |
+| **Actual Negative** | **72.9%** | 20.0% | 7.1% |
+| **Actual Neutral** | 17.6% | **55.9%** | 26.5% |
+| **Actual Positive** | 5.0% | 8.7% | **86.3%** |
 
 ### Top Keywords by Sentiment Class
 ```text
