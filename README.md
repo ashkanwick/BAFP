@@ -97,7 +97,7 @@ flowchart TD
 
 ```bash
 # Clone the repository
-git clone https://github.com/ashkanwick/BAFP.git
+git clone https://github.com/AshkanTheFirst/BAFP.git
 cd BAFP
 
 # Create and activate a Python virtual environment
@@ -251,5 +251,5 @@ This project is licensed under the [MIT License](LICENSE).
 ---
 
 <div align="center">
-  <sub>Developed with ❤️ for Persian NLP advancement by <a href="https://github.com/ashkanwick">@ashkanwick</a></sub>
+  <sub>Developed with ❤️ for Persian NLP advancement by <a href="https://github.com/AshkanTheFirst">@AshkanTheFirst</a></sub>
 </div>
